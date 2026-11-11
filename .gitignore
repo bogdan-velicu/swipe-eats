@@ -7,3 +7,4 @@ dist/
 # firebase emulator logs
 *-debug.log
 .firebase/
+functions/lib/
