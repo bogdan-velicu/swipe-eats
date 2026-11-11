@@ -46,6 +46,21 @@ export async function searchPlaces(input: Filters | SearchPlacesInput): Promise<
   return [...byId.values()];
 }
 
+export interface GeoResult {
+  lat: number;
+  lng: number;
+  label?: string;
+}
+
+/** Server-side address → coordinates (works without device GPS/geocoder). */
+export async function geocode(address: string): Promise<GeoResult | null> {
+  const res = await httpsCallable<{ address: string }, { result?: GeoResult | null } | null>(
+    functions(),
+    'geocode',
+  )({ address });
+  return res.data?.result ?? null;
+}
+
 export async function placePhotoUrls(placeId: string): Promise<string[]> {
   const res = await httpsCallable<{ placeId: string }, { urls?: string[] } | null>(
     functions(),

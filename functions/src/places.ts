@@ -189,3 +189,28 @@ export async function fetchPlaceReviews(placeId: string, deps: Deps): Promise<Re
     },
   }));
 }
+
+export interface GeoResult {
+  lat: number;
+  lng: number;
+  label?: string;
+}
+
+/** Resolve a free-text address/place name to coordinates via Places Text Search (New).
+ * Works anywhere (no device GPS/geocoder needed) since the lookup runs server-side. */
+export async function geocodeCore(address: string, deps: Deps): Promise<GeoResult | null> {
+  const q = address.trim();
+  if (!q) return null;
+  const json = await call(deps, `${BASE}/places:searchText`, {
+    method: 'POST',
+    body: { textQuery: q, pageSize: 1 },
+    fieldMask: 'places.location,places.formattedAddress,places.displayName',
+  });
+  const p = (json.places ?? [])[0];
+  if (!p?.location) return null;
+  return {
+    lat: p.location.latitude,
+    lng: p.location.longitude,
+    label: p.formattedAddress ?? p.displayName?.text,
+  };
+}

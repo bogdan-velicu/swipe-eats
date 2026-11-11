@@ -1,6 +1,6 @@
 import { HttpsError, onCall } from 'firebase-functions/v2/https';
 import { defineSecret } from 'firebase-functions/params';
-import { fetchPlacePhotoUrls, fetchPlaceReviews, searchPlacesCore, type SearchInput } from './places';
+import { fetchPlacePhotoUrls, fetchPlaceReviews, geocodeCore, searchPlacesCore, type SearchInput } from './places';
 
 // Set with: firebase functions:secrets:set PLACES_API_KEY  (never committed, never in the client).
 const placesKey = defineSecret('PLACES_API_KEY');
@@ -32,6 +32,19 @@ export const searchPlaces = onCall(opts, async (req) => {
     return await searchPlacesCore(d, deps());
   } catch {
     throw new HttpsError('internal', 'Places search failed.');
+  }
+});
+
+export const geocode = onCall(opts, async (req) => {
+  requireAuth(req.auth);
+  const address = (req.data as { address?: unknown } | null)?.address;
+  if (typeof address !== 'string' || !address.trim()) {
+    throw new HttpsError('invalid-argument', 'address required.');
+  }
+  try {
+    return { result: await geocodeCore(address, deps()) };
+  } catch {
+    throw new HttpsError('internal', 'Geocode failed.');
   }
 });
 
