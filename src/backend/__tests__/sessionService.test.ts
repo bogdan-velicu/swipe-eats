@@ -80,10 +80,16 @@ describe('sessionService', () => {
     const guestUid = await signInNewUser();
     const found = await findSessionByCode(s.code);
     expect(found?.id).toBe(s.id);
+    // leak check: pre-join lookup must not reveal the host location
+    expect(found?.filters.anchor).not.toEqual(filters.anchor);
+    expect(found?.hostId).toBe('');
+    const codeData = (await getDoc(doc(db, 'sessionCodes', s.code))).data();
+    expect(codeData).toEqual({ sessionId: s.id });
     await joinSession(s.id, { ...guest('Guest'), id: 'ignored' });
     // after joining, the guest may read the session
     const snap = await getDoc(doc(db, 'sessions', s.id));
     expect(snap.exists()).toBe(true);
+    expect(snap.data()?.filters.anchor).toEqual(filters.anchor);
     const p = await getDoc(doc(db, 'sessions', s.id, 'participants', guestUid));
     expect(p.data()).toMatchObject({ id: guestUid, name: 'Guest', active: true });
   });

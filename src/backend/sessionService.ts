@@ -22,7 +22,7 @@ import { db } from './firebase';
  *   sessions/{id}                      code, hostId, status, mode, filters, candidates
  *   sessions/{id}/participants/{uid}   Participant
  *   sessions/{id}/swipes/{uid}         { candidateId: SwipeDir }
- *   sessionCodes/{code}                { sessionId, hostId, mode, filters }  (code -> id lookup)
+ *   sessionCodes/{code}                { sessionId }  (code -> id lookup; deliberately no filters/anchor)
  * `observeSession` / `findSessionByCode` recompose the logical `Session` that core/matching uses.
  */
 
@@ -119,7 +119,7 @@ export async function createSession(input: CreateSessionInput): Promise<Session>
     filters,
     candidates,
   });
-  batch.set(doc(db, 'sessionCodes', code), { sessionId: id, hostId: uid, mode: input.mode, filters });
+  batch.set(doc(db, 'sessionCodes', code), { sessionId: id });
   batch.set(participantRef(id, uid), host);
   await batch.commit();
 
@@ -138,9 +138,10 @@ export async function createSession(input: CreateSessionInput): Promise<Session>
 
 /**
  * Resolve a join code. A caller who is not yet a participant cannot read the session doc (by
- * design), so for them this returns a lobby stub built from the public code doc: real id, code,
- * hostId, mode and filters, but status 'waiting' and empty participants/candidates/swipes.
- * Participants (e.g. the host) get the full session.
+ * design), and the public code doc carries only `sessionId`, so for them this returns a lobby
+ * stub: real id and code, but NO host/filters/anchor information (hostId '', placeholder
+ * filters, status 'waiting', empty participants/candidates/swipes). Join, then use
+ * observeSession for the real data. Participants (e.g. the host) get the full session.
  */
 export async function findSessionByCode(code: string): Promise<Session | null> {
   await ensureAnonymousAuth();
@@ -148,8 +149,7 @@ export async function findSessionByCode(code: string): Promise<Session | null> {
   if (!normalized) return null;
   const codeSnap = await getDoc(doc(db, 'sessionCodes', normalized));
   if (!codeSnap.exists()) return null;
-  const c = codeSnap.data();
-  const id = c.sessionId as string;
+  const id = codeSnap.data().sessionId as string;
   try {
     const [meta, parts, swipes] = await Promise.all([
       getDoc(sessionRef(id)),
@@ -163,10 +163,10 @@ export async function findSessionByCode(code: string): Promise<Session | null> {
   return {
     id,
     code: normalized,
-    hostId: c.hostId,
+    hostId: '',
     status: 'waiting',
-    mode: c.mode,
-    filters: c.filters,
+    mode: 'both',
+    filters: { unit: 'metric', cuisines: [], openNow: false, anchor: { lat: 0, lng: 0 } },
     participants: {},
     candidates: [],
     swipes: {},

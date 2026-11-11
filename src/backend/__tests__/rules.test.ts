@@ -23,12 +23,7 @@ const sessionDoc = (status = 'waiting') => ({
   filters: baseFilters,
   candidates: [],
 });
-const codeDoc = (sessionId: string, hostId: string) => ({
-  sessionId,
-  hostId,
-  mode: 'foodType',
-  filters: baseFilters,
-});
+const codeDoc = (sessionId: string, _hostId?: string) => ({ sessionId });
 
 async function seed(status = 'waiting') {
   await env.withSecurityRulesDisabled(async (ctx) => {
@@ -73,9 +68,26 @@ describe('reads', () => {
     await assertSucceeds(as('alice').collection(`sessions/${SID}/swipes`).get());
   });
   it('session codes: any signed-in user can get, nobody can list; anon cannot get', async () => {
-    await assertSucceeds(as('mallory').doc('sessionCodes/ABC234').get());
+    const snap = await assertSucceeds(as('mallory').doc('sessionCodes/ABC234').get());
+    // leak check: the public code doc must expose nothing but the session id
+    expect(snap.data()).toEqual({ sessionId: SID });
+    expect(JSON.stringify(snap.data())).not.toContain('anchor');
+    expect(snap.data()).not.toHaveProperty('filters');
     await assertFails(as('mallory').collection('sessionCodes').get());
     await assertFails(env.unauthenticatedContext().firestore().doc('sessionCodes/ABC234').get());
+  });
+  it('a participant can read the anchor via the session doc; a non-participant cannot', async () => {
+    const snap = await assertSucceeds(as('alice').doc(`sessions/${SID}`).get());
+    expect(snap.data()?.filters.anchor).toEqual({ lat: 1, lng: 2 });
+    await assertFails(as('mallory').doc(`sessions/${SID}`).get());
+  });
+  it('code doc cannot carry filters/anchor/hostId (cannot be written with location)', async () => {
+    const db = as('newhost');
+    const batch = db.batch();
+    batch.set(db.doc('sessions/s9'), { ...sessionDoc(), hostId: 'newhost', code: 'LEAKYS' });
+    batch.set(db.doc('sessionCodes/LEAKYS'), { sessionId: 's9', filters: baseFilters });
+    batch.set(db.doc('sessions/s9/participants/newhost'), part('newhost'));
+    await assertFails(batch.commit());
   });
   it('participants can still read once finished', async () => {
     await seed('finished');

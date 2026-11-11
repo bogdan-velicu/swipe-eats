@@ -4,8 +4,8 @@ rules_version = '2';
 //   sessions/{sid}                  scalar/meta: code, hostId, status, mode, filters, candidates
 //   sessions/{sid}/participants/{uid}   one doc per participant, written only by that uid
 //   sessions/{sid}/swipes/{uid}         { candidateId: 'LIKE' | 'PASS' }, written only by that uid
-//   sessionCodes/{code}                 { sessionId, hostId, mode, filters } public lookup stub so a
-//                                       would-be joiner (not yet a participant) can resolve a code
+//   sessionCodes/{code}                 { sessionId } ONLY (no filters/anchor/host): lets a would-be
+//                                       joiner resolve a code without learning anything else
 //
 // Principles: deny by default; every rule requires a signed-in user; a session is only readable
 // by its participants; per-user data is writable only by that user; host-only transitions;
@@ -130,10 +130,8 @@ service cloud.firestore {
 
       // Create-only and bound to a session this user hosts, whose code equals the doc id.
       allow create: if signedIn()
-        && request.resource.data.keys().hasOnly(['sessionId', 'hostId', 'mode', 'filters'])
-        && request.resource.data.keys().hasAll(['sessionId', 'hostId', 'mode', 'filters'])
+        && request.resource.data.keys().hasOnly(['sessionId'])
         && request.resource.data.sessionId is string
-        && request.resource.data.hostId == request.auth.uid
         && getAfter(sessionPath(request.resource.data.sessionId)).data.hostId == request.auth.uid
         && getAfter(sessionPath(request.resource.data.sessionId)).data.code == code;
     }
