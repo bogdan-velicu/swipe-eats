@@ -7,6 +7,7 @@ export interface Deck {
   next: Candidate | null;
   like: () => void;
   pass: () => void;
+  maybe: () => void;
   remaining: number;
   empty: boolean;
 }
@@ -49,6 +50,7 @@ export function useDeck(session: Pick<Session, 'id' | 'candidates'>, alreadySwip
 
   const like = useCallback(() => swipe('LIKE'), [swipe]);
   const pass = useCallback(() => swipe('PASS'), [swipe]);
+  const maybe = useCallback(() => swipe('MAYBE'), [swipe]);
 
   const remaining = Math.max(0, candidates.length - index);
   return {
@@ -56,6 +58,7 @@ export function useDeck(session: Pick<Session, 'id' | 'candidates'>, alreadySwip
     next: candidates[index + 1] ?? null,
     like,
     pass,
+    maybe,
     remaining,
     empty: remaining === 0,
   };

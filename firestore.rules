@@ -3,7 +3,7 @@ rules_version = '2';
 // Data model (see src/backend/sessionService.ts):
 //   sessions/{sid}                  scalar/meta: code, hostId, status, mode, filters, candidates
 //   sessions/{sid}/participants/{uid}   one doc per participant, written only by that uid
-//   sessions/{sid}/swipes/{uid}         { candidateId: 'LIKE' | 'PASS' }, written only by that uid
+//   sessions/{sid}/swipes/{uid}         { candidateId: 'LIKE' | 'PASS' | 'MAYBE' }, written only by that uid
 //   sessionCodes/{code}                 { sessionId } ONLY (no filters/anchor/host): lets a would-be
 //                                       joiner resolve a code without learning anything else
 //
@@ -117,7 +117,7 @@ service cloud.firestore {
           && isOpen(sid)
           && isActiveParticipant(sid)
           && request.resource.data.keys().size() <= 200
-          && request.resource.data.values().hasOnly(['LIKE', 'PASS']);
+          && request.resource.data.values().hasOnly(['LIKE', 'PASS', 'MAYBE']);
 
         // no delete
       }

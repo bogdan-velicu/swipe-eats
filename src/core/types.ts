@@ -6,7 +6,9 @@ export interface LatLng {
   lng: number;
 }
 
-export type SwipeDir = 'LIKE' | 'PASS';
+/** LIKE / PASS decide matches + ranking; MAYBE is a neutral "unsure" — recorded but it
+ * counts 0 toward the leaderboard and never creates a match. */
+export type SwipeDir = 'LIKE' | 'PASS' | 'MAYBE';
 
 export interface Participant {
   id: string;
