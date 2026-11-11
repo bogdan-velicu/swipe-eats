@@ -1,11 +1,8 @@
 // Pure unit/distance helpers. No React / React Native imports.
 
-export type UnitSystem = 'metric' | 'imperial';
+import type { LatLng } from './types';
 
-export interface LatLng {
-  lat: number;
-  lng: number;
-}
+export type UnitSystem = 'metric' | 'imperial';
 
 const EARTH_RADIUS_M = 6371000;
 const METERS_PER_MILE = 1609.344;
