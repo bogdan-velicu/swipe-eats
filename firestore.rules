@@ -1,0 +1,141 @@
+rules_version = '2';
+
+// Data model (see src/backend/sessionService.ts):
+//   sessions/{sid}                  scalar/meta: code, hostId, status, mode, filters, candidates
+//   sessions/{sid}/participants/{uid}   one doc per participant, written only by that uid
+//   sessions/{sid}/swipes/{uid}         { candidateId: 'LIKE' | 'PASS' }, written only by that uid
+//   sessionCodes/{code}                 { sessionId, hostId, mode, filters } public lookup stub so a
+//                                       would-be joiner (not yet a participant) can resolve a code
+//
+// Principles: deny by default; every rule requires a signed-in user; a session is only readable
+// by its participants; per-user data is writable only by that user; host-only transitions;
+// `finished` / `cancelled` sessions are immutable (reads still allowed for results screens).
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function sessionPath(sid) {
+      return /databases/$(database)/documents/sessions/$(sid);
+    }
+
+    function participantPath(sid, uid) {
+      return /databases/$(database)/documents/sessions/$(sid)/participants/$(uid);
+    }
+
+    function isParticipant(sid) {
+      return signedIn() && exists(participantPath(sid, request.auth.uid));
+    }
+
+    function isActiveParticipant(sid) {
+      return isParticipant(sid) && get(participantPath(sid, request.auth.uid)).data.active == true;
+    }
+
+    // Session is joinable / writable. getAfter so a batch that creates the session together with
+    // its host participant / code doc is evaluated against the post-write state; outside a batch
+    // it equals the current state. A missing session makes this error -> deny.
+    function isOpen(sid) {
+      return getAfter(sessionPath(sid)).data.status in ['waiting', 'active'];
+    }
+
+    function validMode(m) {
+      return m in ['foodType', 'place', 'both'];
+    }
+
+    function validStatusMove(oldS, newS) {
+      return oldS == newS
+        || (oldS == 'waiting' && newS in ['active', 'finished', 'cancelled'])
+        || (oldS == 'active' && newS in ['finished', 'cancelled']);
+    }
+
+    // ---- sessions -----------------------------------------------------------------------
+    match /sessions/{sid} {
+      allow read: if isParticipant(sid);
+
+      allow create: if signedIn()
+        && request.resource.data.keys().hasOnly(['code', 'hostId', 'status', 'mode', 'filters', 'candidates'])
+        && request.resource.data.keys().hasAll(['code', 'hostId', 'status', 'mode', 'filters', 'candidates'])
+        && request.resource.data.hostId == request.auth.uid
+        && request.resource.data.status == 'waiting'
+        && validMode(request.resource.data.mode)
+        && request.resource.data.code is string
+        && request.resource.data.code.matches('^[A-HJ-NP-Z2-9]{6}$')
+        && request.resource.data.filters is map
+        && request.resource.data.candidates is list
+        && request.resource.data.candidates.size() <= 200;
+
+      // Host only; terminal sessions are frozen; hostId / code / filters are immutable.
+      allow update: if signedIn()
+        && resource.data.hostId == request.auth.uid
+        && resource.data.status in ['waiting', 'active']
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'mode', 'candidates'])
+        && validStatusMove(resource.data.status, request.resource.data.status)
+        && validMode(request.resource.data.mode)
+        && request.resource.data.candidates is list
+        && request.resource.data.candidates.size() <= 200;
+
+      // no delete
+
+      // ---- participants ----------------------------------------------------------------
+      match /participants/{uid} {
+        // A user may read their own doc even before being a participant (join checks for it).
+        allow read: if signedIn() && (request.auth.uid == uid || isParticipant(sid));
+
+        // Join: a user adds ONLY their own participant doc, to an open session.
+        allow create: if signedIn()
+          && request.auth.uid == uid
+          && isOpen(sid)
+          && request.resource.data.keys().hasOnly(['id', 'name', 'emoji', 'color', 'joinedAt', 'active'])
+          && request.resource.data.keys().hasAll(['id', 'name', 'emoji', 'color', 'joinedAt', 'active'])
+          && request.resource.data.id == uid
+          && request.resource.data.name is string
+          && request.resource.data.name.size() > 0 && request.resource.data.name.size() <= 40
+          && request.resource.data.emoji is string && request.resource.data.emoji.size() <= 16
+          && request.resource.data.color is string && request.resource.data.color.size() <= 32
+          && request.resource.data.joinedAt is number
+          && request.resource.data.active == true;
+
+        // Leave / rejoin: only the user, only the `active` flag, only while open.
+        allow update: if signedIn()
+          && request.auth.uid == uid
+          && isOpen(sid)
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['active'])
+          && request.resource.data.active is bool;
+
+        // no delete
+      }
+
+      // ---- swipes ----------------------------------------------------------------------
+      match /swipes/{uid} {
+        allow read: if isParticipant(sid);
+
+        // Per-user write isolation: the doc id must be the caller's uid.
+        allow create, update: if signedIn()
+          && request.auth.uid == uid
+          && isOpen(sid)
+          && isActiveParticipant(sid)
+          && request.resource.data.keys().size() <= 200
+          && request.resource.data.values().hasOnly(['LIKE', 'PASS']);
+
+        // no delete
+      }
+    }
+
+    // ---- code lookup ----------------------------------------------------------------------
+    match /sessionCodes/{code} {
+      // get only (no list/enumeration). The code is the invite secret.
+      allow get: if signedIn();
+
+      // Create-only and bound to a session this user hosts, whose code equals the doc id.
+      allow create: if signedIn()
+        && request.resource.data.keys().hasOnly(['sessionId', 'hostId', 'mode', 'filters'])
+        && request.resource.data.keys().hasAll(['sessionId', 'hostId', 'mode', 'filters'])
+        && request.resource.data.sessionId is string
+        && request.resource.data.hostId == request.auth.uid
+        && getAfter(sessionPath(request.resource.data.sessionId)).data.hostId == request.auth.uid
+        && getAfter(sessionPath(request.resource.data.sessionId)).data.code == code;
+    }
+  }
+}

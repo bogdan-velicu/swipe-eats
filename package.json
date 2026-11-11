@@ -8,7 +8,7 @@
     "android": "expo start --android",
     "ios": "expo start --ios",
     "test": "jest",
-    "test:emu": "firebase emulators:exec --project demo-swipeeats --only auth \"jest -c jest.emu.config.js --runInBand\""
+    "test:emu": "firebase emulators:exec --project demo-swipeeats --only auth,firestore \"jest -c jest.emu.config.js --runInBand --forceExit\""
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "2.2.0",
@@ -16,6 +16,7 @@
     "babel-preset-expo": "~58.0.0",
     "expo": "~58.0.23",
     "expo-constants": "~58.0.15",
+    "expo-crypto": "~58.0.7",
     "expo-linking": "~58.0.16",
     "expo-localization": "~58.0.5",
     "expo-router": "~58.0.30",
@@ -29,7 +30,9 @@
     "react-native-screens": "~4.30.1"
   },
   "devDependencies": {
+    "@firebase/rules-unit-testing": "^5.0.2",
     "@react-native/jest-preset": "^0.88.1",
+    "@types/node": "^26.6.6",
     "@types/react": "~19.3.0",
     "firebase-tools": "^15.35.0",
     "typescript": "~6.0.3"
