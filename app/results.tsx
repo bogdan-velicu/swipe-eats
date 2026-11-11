@@ -5,8 +5,11 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ensureAnonymousAuth } from '../src/backend/auth';
 import { endSession } from '../src/backend/sessionService';
 import { activeParticipantIds } from '../src/core/matching';
-import type { Session } from '../src/core/types';
+import type { Candidate, Session } from '../src/core/types';
 import { PickCard } from '../src/features/results/PickCard';
+import { Podium } from '../src/features/results/Podium';
+import { RankBars } from '../src/features/results/RankBars';
+import { Spotlight } from '../src/features/results/Spotlight';
 import { useResults } from '../src/features/results/useResults';
 import { useSession } from '../src/features/session/useSession';
 import { useTheme } from '../src/theme';
@@ -32,6 +35,7 @@ function Results({ session }: { session: Session }) {
   const { matches, leaderboard, soloPicks } = useResults(session);
   const [uid, setUid] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [spotlight, setSpotlight] = useState<Candidate | null>(null);
   useEffect(() => {
     void ensureAnonymousAuth().then(setUid, () => {});
   }, []);
@@ -80,16 +84,25 @@ function Results({ session }: { session: Session }) {
                 ))}
               </>
             ) : null}
-            <Heading>Most liked</Heading>
-            {leaderboard.map(({ candidate, likes }) => (
-              <PickCard key={candidate.id} candidate={candidate} tag={`${likes} ${likes === 1 ? 'like' : 'likes'}`} />
-            ))}
+            <Heading>The results are in</Heading>
+            <Podium top={leaderboard} onPick={setSpotlight} />
+            {leaderboard.length > 3 ? (
+              <View style={{ marginTop: t.space.md, gap: t.space.md }}>
+                <RankBars
+                  entries={leaderboard.slice(3)}
+                  startRank={3}
+                  maxLikes={leaderboard[0]?.likes ?? 0}
+                  onPick={setSpotlight}
+                />
+              </View>
+            ) : null}
           </>
         )}
         <Button title="Keep swiping" secondary onPress={keepSwiping} />
         {isHost ? <Button title={busy ? 'Ending...' : 'End session'} onPress={() => void end()} disabled={busy} /> : null}
         {!isHost && solo ? <Button title="Finish" onPress={recap} /> : null}
       </ScrollView>
+      <Spotlight candidate={spotlight} onClose={() => setSpotlight(null)} />
     </SafeAreaView>
   );
 }
