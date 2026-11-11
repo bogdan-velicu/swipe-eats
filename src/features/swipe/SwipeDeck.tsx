@@ -135,9 +135,15 @@ export function SwipeDeck({ deck, anchor }: { deck: Deck; anchor?: LatLng }) {
   const { current, next, like, pass } = deck;
 
   const commit = (dir: SwipeDir) => {
-    dragX.value = 0;
+    // Advance first (promotes the behind card to top), then clear the shared drag on the next
+    // frame. Resetting synchronously snaps the just-promoted card back to the behind scale
+    // (0.94) for a frame before it renders as the top card — the "shrinks then grows" blip.
+    // Deferring puts that settle on the new (hidden) behind card instead.
     if (dir === 'LIKE') like();
     else pass();
+    requestAnimationFrame(() => {
+      dragX.value = 0;
+    });
   };
 
   return (
