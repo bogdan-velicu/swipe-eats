@@ -8,7 +8,9 @@ const config: ExpoConfig = {
   icon: './assets/icon.png',
   userInterfaceStyle: 'dark',
   backgroundColor: '#0c0c10',
+  scheme: 'swipeeats',
   platforms: ['ios', 'android'],
+  plugins: ['expo-router', 'expo-localization'],
   ios: { supportsTablet: false, bundleIdentifier: 'app.swipeeats.dinner' },
   android: {
     package: 'app.swipeeats.dinner',
