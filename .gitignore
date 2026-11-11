@@ -1,1 +1,10 @@
 .superpowers/
+node_modules/
+.expo/
+dist/
+*.log
+
+# firebase emulator logs
+*-debug.log
+.firebase/
+functions/lib/
