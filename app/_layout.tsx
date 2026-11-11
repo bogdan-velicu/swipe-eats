@@ -1,5 +1,6 @@
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { ThemeProvider, useTheme } from '../src/theme';
 
 function Navigator() {
@@ -29,8 +30,10 @@ function Navigator() {
 
 export default function RootLayout() {
   return (
-    <ThemeProvider>
-      <Navigator />
-    </ThemeProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <ThemeProvider>
+        <Navigator />
+      </ThemeProvider>
+    </GestureHandlerRootView>
   );
 }
