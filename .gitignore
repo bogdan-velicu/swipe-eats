@@ -8,3 +8,7 @@ dist/
 *-debug.log
 .firebase/
 functions/lib/
+
+# Local environment (never commit real keys)
+.env
+.env*.local
