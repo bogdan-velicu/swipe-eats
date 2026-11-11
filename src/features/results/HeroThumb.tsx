@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import { Image, StyleSheet, Text, View } from 'react-native';
-import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import type { Candidate } from '../../core/types';
 import { useTheme } from '../../theme';
 import { usePlaceDetail } from '../place/use-place-detail';
@@ -8,9 +7,11 @@ import { usePlaceDetail } from '../place/use-place-detail';
 /**
  * A restaurant's hero image as a filled tile. Pulls the first Places photo from the
  * session cache (already warmed while swiping / by the results prefetch, so usually
- * instant) and falls back to the food emoji. The image fades in on load — and reverts
- * to the emoji if it fails — so there's never a hard placeholder pop. Used by the podium
- * and the spotlight so both show the same picture.
+ * instant) and falls back to the food emoji — reverting to it if the image fails to load.
+ *
+ * The photo is drawn solid: no opacity fade. The cache removes the re-fetch flash the
+ * fade was meant to hide, and a fade gated on the image's load event could leave a tile
+ * blank if that event didn't fire. Used by the podium and the spotlight.
  */
 export function HeroThumb({ candidate, radius }: { candidate: Candidate; radius?: number }) {
   const t = useTheme();
@@ -19,12 +20,7 @@ export function HeroThumb({ candidate, radius }: { candidate: Candidate; radius?
   const uri = photos[0];
   const [failed, setFailed] = useState(false);
 
-  const opacity = useSharedValue(0);
-  useEffect(() => {
-    opacity.value = 0;
-    setFailed(false);
-  }, [uri, opacity]);
-  const imgStyle = useAnimatedStyle(() => ({ opacity: opacity.value }));
+  useEffect(() => setFailed(false), [uri]);
 
   const showEmoji = !uri || failed;
   return (
@@ -34,13 +30,10 @@ export function HeroThumb({ candidate, radius }: { candidate: Candidate; radius?
           <Text style={{ fontSize: 40 }}>{candidate.kind === 'place' ? '🍽️' : (candidate.emoji ?? '🍽️')}</Text>
         </View>
       ) : (
-        <Animated.Image
+        <Image
           source={{ uri }}
-          style={[styles.fill, { borderRadius: br }, imgStyle]}
+          style={[styles.fill, { borderRadius: br }]}
           resizeMode="cover"
-          onLoad={() => {
-            opacity.value = withTiming(1, { duration: 220 });
-          }}
           onError={() => setFailed(true)}
         />
       )}

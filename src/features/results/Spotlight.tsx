@@ -1,6 +1,14 @@
+import { useEffect } from 'react';
 import { Linking, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { BlurView } from 'expo-blur';
-import Animated, { FadeIn, FadeInDown, FadeOut } from 'react-native-reanimated';
+import Animated, {
+  Easing,
+  FadeIn,
+  FadeOut,
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+} from 'react-native-reanimated';
 import type { Candidate } from '../../core/types';
 import { useTheme } from '../../theme';
 import { HeroThumb } from './HeroThumb';
@@ -25,67 +33,96 @@ async function openNavigation(c: Candidate) {
  * A closeup of the tapped restaurant floating over a blurred, dimmed backdrop (the iOS
  * sheet effect). Big photo, name and rating up top; a tappable location row with a map
  * pin at the bottom that hands off to a navigation app. Tap the backdrop or ✕ to dismiss.
+ *
+ * Open motion: only the blur backdrop cross-fades; the card scales up crisply (ease-out
+ * timing, no spring) and the photo is drawn solid — so there's no wobble and no see-through
+ * flash while it opens.
  */
 export function Spotlight({ candidate, onClose }: { candidate: Candidate | null; onClose: () => void }) {
   const t = useTheme();
   const location = candidate?.address ?? (candidate?.location ? 'Open in maps' : null);
+
+  const enter = useSharedValue(0);
+  useEffect(() => {
+    if (candidate) {
+      enter.value = 0;
+      enter.value = withTiming(1, { duration: 200, easing: Easing.out(Easing.cubic) });
+    }
+  }, [candidate, enter]);
+  const cardStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: 0.95 + 0.05 * enter.value }, { translateY: (1 - enter.value) * 10 }],
+  }));
+
   return (
     <Modal visible={!!candidate} transparent animationType="none" onRequestClose={onClose}>
       {candidate ? (
-        <Animated.View entering={FadeIn.duration(180)} exiting={FadeOut.duration(140)} style={styles.fill}>
-          <BlurView intensity={40} tint="dark" style={styles.fill}>
-            <Pressable accessibilityLabel="Close" style={[styles.fill, styles.dim, styles.center]} onPress={onClose}>
-              {/* Inner Pressable swallows taps so touching the card doesn't dismiss. */}
-              <Animated.View entering={FadeInDown.springify().damping(18)} style={styles.cardWrap}>
-                <Pressable onPress={() => {}} style={[styles.card, { backgroundColor: t.color.surface }]}>
-                  <View style={styles.photo}>
-                    <HeroThumb candidate={candidate} radius={0} />
+        <View style={styles.fill}>
+          {/* Backdrop: the blur + dim cross-fades on open/close; tapping it dismisses. */}
+          <Animated.View
+            entering={FadeIn.duration(160)}
+            exiting={FadeOut.duration(160)}
+            style={StyleSheet.absoluteFill}
+          >
+            <BlurView intensity={40} tint="dark" style={styles.fill}>
+              <Pressable accessibilityLabel="Close" style={[styles.fill, styles.dim]} onPress={onClose} />
+            </BlurView>
+          </Animated.View>
+
+          {/* Card layer sits above the backdrop; box-none lets taps beside the card reach it. */}
+          <Animated.View
+            exiting={FadeOut.duration(140)}
+            style={[StyleSheet.absoluteFill, styles.center]}
+            pointerEvents="box-none"
+          >
+            <Animated.View style={[styles.cardWrap, cardStyle]}>
+              <Pressable onPress={() => {}} style={[styles.card, { backgroundColor: t.color.surface }]}>
+                <View style={styles.photo}>
+                  <HeroThumb candidate={candidate} radius={0} />
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="Close"
+                    onPress={onClose}
+                    style={styles.close}
+                  >
+                    <Text style={styles.closeText}>✕</Text>
+                  </Pressable>
+                </View>
+
+                <View style={{ padding: t.space.xl }}>
+                  <Text numberOfLines={2} style={[styles.name, { color: t.color.text }]}>
+                    {candidate.name}
+                  </Text>
+                  {candidate.rating != null ? (
+                    <Text style={[styles.rating, { color: t.color.accent }]}>
+                      ★ {candidate.rating.toFixed(1)}
+                      {candidate.userRatingCount != null ? (
+                        <Text style={{ color: t.color.textDim }}>  ({candidate.userRatingCount})</Text>
+                      ) : null}
+                    </Text>
+                  ) : null}
+
+                  {location ? (
                     <Pressable
                       accessibilityRole="button"
-                      accessibilityLabel="Close"
-                      onPress={onClose}
-                      style={styles.close}
+                      accessibilityLabel={`Navigate to ${candidate.name}`}
+                      onPress={() => void openNavigation(candidate)}
+                      style={({ pressed }) => [
+                        styles.locationRow,
+                        { borderColor: t.color.surfaceGlass, opacity: pressed ? 0.6 : 1 },
+                      ]}
                     >
-                      <Text style={styles.closeText}>✕</Text>
-                    </Pressable>
-                  </View>
-
-                  <View style={{ padding: t.space.xl }}>
-                    <Text numberOfLines={2} style={[styles.name, { color: t.color.text }]}>
-                      {candidate.name}
-                    </Text>
-                    {candidate.rating != null ? (
-                      <Text style={[styles.rating, { color: t.color.accent }]}>
-                        ★ {candidate.rating.toFixed(1)}
-                        {candidate.userRatingCount != null ? (
-                          <Text style={{ color: t.color.textDim }}>  ({candidate.userRatingCount})</Text>
-                        ) : null}
+                      <Text style={styles.pin}>📍</Text>
+                      <Text numberOfLines={2} style={[styles.location, { color: t.color.text }]}>
+                        {location}
                       </Text>
-                    ) : null}
-
-                    {location ? (
-                      <Pressable
-                        accessibilityRole="button"
-                        accessibilityLabel={`Navigate to ${candidate.name}`}
-                        onPress={() => void openNavigation(candidate)}
-                        style={({ pressed }) => [
-                          styles.locationRow,
-                          { borderColor: t.color.surfaceGlass, opacity: pressed ? 0.6 : 1 },
-                        ]}
-                      >
-                        <Text style={styles.pin}>📍</Text>
-                        <Text numberOfLines={2} style={[styles.location, { color: t.color.text }]}>
-                          {location}
-                        </Text>
-                        <Text style={[styles.chevron, { color: t.color.accent }]}>›</Text>
-                      </Pressable>
-                    ) : null}
-                  </View>
-                </Pressable>
-              </Animated.View>
-            </Pressable>
-          </BlurView>
-        </Animated.View>
+                      <Text style={[styles.chevron, { color: t.color.accent }]}>›</Text>
+                    </Pressable>
+                  ) : null}
+                </View>
+              </Pressable>
+            </Animated.View>
+          </Animated.View>
+        </View>
       ) : null}
     </Modal>
   );
