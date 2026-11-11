@@ -87,6 +87,10 @@ function DeckCard({ candidate, anchor, isTop, dragX, onCommit, handle }: DeckCar
   const cardStyle = useAnimatedStyle(() => {
     if (isTop) {
       return {
+        // Must set opacity explicitly: a card promoted from behind -> top would otherwise
+        // retain its last behind-state opacity (Reanimated keeps omitted props), leaving the
+        // top card translucent so the next card shows through.
+        opacity: 1,
         transform: [
           { translateX: tx.value },
           { translateY: ty.value },
