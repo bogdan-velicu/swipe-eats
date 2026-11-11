@@ -10,11 +10,13 @@ import type { Session } from '../src/core/types';
 import { useTheme } from '../src/theme';
 import { Button } from '../src/ui/Form';
 
-function Message({ text }: { text: string }) {
+function Message({ text, onRetry, onBack }: { text: string; onRetry?: () => void; onBack?: () => void }) {
   const t = useTheme();
   return (
     <View style={{ flex: 1, backgroundColor: t.color.bg, alignItems: 'center', justifyContent: 'center', padding: t.space.xl }}>
       <Text style={{ color: t.color.textDim, textAlign: 'center', fontSize: t.font.size.md }}>{text}</Text>
+      {onRetry && <Button title="Retry" onPress={onRetry} />}
+      {onBack && <Button title="Back" onPress={onBack} secondary />}
     </View>
   );
 }
@@ -55,15 +57,32 @@ function Deck({ session, uid }: { session: Session; uid: string }) {
 }
 
 export default function SwipeScreen() {
+  const router = useRouter();
   const { id } = useLocalSearchParams<{ id?: string }>();
-  const { session, loading, error } = useSession(typeof id === 'string' ? id : undefined);
+  const { session, loading, error, retry } = useSession(typeof id === 'string' ? id : undefined);
   const [uid, setUid] = useState<string | null>(null);
+  const [authError, setAuthError] = useState(false);
+  const [authAttempt, setAuthAttempt] = useState(0);
   useEffect(() => {
-    void ensureAnonymousAuth().then(setUid, () => {});
-  }, []);
+    let live = true;
+    setAuthError(false);
+    ensureAnonymousAuth().then(
+      (u) => live && setUid(u),
+      () => live && setAuthError(true),
+    );
+    return () => {
+      live = false;
+    };
+  }, [authAttempt]);
+  const back = () => (router.canGoBack() ? router.back() : router.replace('/'));
+  if (authError && !uid) {
+    return <Message text="Couldn't sign in. Check your connection and try again." onRetry={() => setAuthAttempt((n) => n + 1)} onBack={back} />;
+  }
+  if (error) return <Message text="Couldn't load this session." onRetry={retry} onBack={back} />;
   if (!loading && session && uid) {
     // key by mode: the food-type -> places handoff swaps the candidate list, so reset the deck.
     return <Deck key={session.mode} session={session} uid={uid} />;
   }
-  return <Message text={error ? "Couldn't load this session." : !loading && !session ? 'Session not found.' : 'Loading...'} />;
+  if (!loading && !session) return <Message text="Session not found." onBack={back} />;
+  return <Message text="Loading..." />;
 }

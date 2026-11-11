@@ -14,11 +14,11 @@ import { scheduleOnRN } from 'react-native-worklets';
 import type { Candidate, LatLng, SwipeDir } from '../../core/types';
 import { useTheme } from '../../theme';
 import { SwipeCard } from './SwipeCard';
+import { shouldFling } from './shouldFling';
 import type { Deck } from './useDeck';
 
 const SPRING = { damping: 18, stiffness: 160, mass: 0.8 } as const;
 const FLING_SPRING = { damping: 20, stiffness: 120, mass: 0.8, overshootClamping: true } as const;
-const VELOCITY_TRIGGER = 900;
 
 interface CardHandle {
   fling: (dir: SwipeDir) => void;
@@ -74,10 +74,9 @@ function DeckCard({ candidate, anchor, isTop, dragX, onCommit, handle }: DeckCar
     .onEnd((e) => {
       'worklet';
       if (done.value) return;
-      if (tx.value > threshold || e.velocityX > VELOCITY_TRIGGER) {
-        flingTo('LIKE', e.velocityX);
-      } else if (tx.value < -threshold || e.velocityX < -VELOCITY_TRIGGER) {
-        flingTo('PASS', e.velocityX);
+      const dir = shouldFling(tx.value, e.velocityX, threshold);
+      if (dir) {
+        flingTo(dir, e.velocityX);
       } else {
         tx.value = withSpring(0, SPRING);
         ty.value = withSpring(0, SPRING);
