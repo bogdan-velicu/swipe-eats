@@ -30,5 +30,5 @@ export function placesToCandidates(places: PlaceLite[]): Candidate[] {
 }
 
 export function foodTypeCandidates(): Candidate[] {
-  return FOOD_TYPES.map((f) => ({ id: f.value, kind: 'foodType', name: `${f.emoji} ${f.label}`, primaryType: f.placesType }));
+  return FOOD_TYPES.map((f) => ({ id: f.value, kind: 'foodType', name: f.label, emoji: f.emoji, primaryType: f.placesType }));
 }

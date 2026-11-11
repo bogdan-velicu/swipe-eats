@@ -36,7 +36,7 @@ export function SwipeCard({ candidate, anchor }: { candidate: Candidate; anchor?
   return (
     <View style={[styles.card, { backgroundColor: t.color.surface, borderRadius: t.radius.lg }]}>
       <View style={styles.photo}>
-        <PlacePhotos photos={photos} fallbackEmoji={candidate.kind === 'place' ? '🍽️' : '🍜'} />
+        <PlacePhotos photos={photos} fallbackEmoji={candidate.kind === 'place' ? '🍽️' : (candidate.emoji ?? '🍽️')} />
       </View>
       <View style={{ padding: t.space.xl }}>
         <Text numberOfLines={2} style={{ color: t.color.text, fontSize: t.font.size.xl, fontWeight: '700' }}>

@@ -22,6 +22,8 @@ export interface Candidate {
   kind: 'foodType' | 'place';
   placeId?: string;
   name: string;
+  /** Hero emoji for food-type cards (places use photos). */
+  emoji?: string;
   rating?: number;
   userRatingCount?: number;
   priceLevel?: string;
