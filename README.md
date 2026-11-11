@@ -1,6 +1,8 @@
 <div align="center">
 
-# 🍽️ Swipe Eats
+<img src="assets/icon.png" width="128" alt="Swipe Eats" />
+
+# Swipe Eats
 
 ### Decide dinner together.
 

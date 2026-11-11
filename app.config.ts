@@ -41,10 +41,9 @@ const config: ExpoConfig = {
       },
     ],
     adaptiveIcon: {
-      backgroundColor: '#0c0c10',
+      // Matches the emblem's near-black corners so the foreground has no visible seam.
+      backgroundColor: '#010102',
       foregroundImage: './assets/android-icon-foreground.png',
-      backgroundImage: './assets/android-icon-background.png',
-      monochromeImage: './assets/android-icon-monochrome.png',
     },
   },
 };
