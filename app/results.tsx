@@ -11,6 +11,7 @@ import { Podium } from '../src/features/results/Podium';
 import { RankBars } from '../src/features/results/RankBars';
 import { Spotlight } from '../src/features/results/Spotlight';
 import { useResults } from '../src/features/results/useResults';
+import { usePrefetchHeroes } from '../src/features/results/usePrefetchHeroes';
 import { useSession } from '../src/features/session/useSession';
 import { useTheme } from '../src/theme';
 import { Button } from '../src/ui/Form';
@@ -36,6 +37,8 @@ function Results({ session }: { session: Session }) {
   const [uid, setUid] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [spotlight, setSpotlight] = useState<Candidate | null>(null);
+  // Warm hero images for every shown place so the podium/spotlight don't flash placeholders.
+  usePrefetchHeroes([...matches, ...leaderboard.map((e) => e.candidate), ...soloPicks]);
   useEffect(() => {
     void ensureAnonymousAuth().then(setUid, () => {});
   }, []);

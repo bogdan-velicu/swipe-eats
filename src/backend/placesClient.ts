@@ -2,6 +2,7 @@ import { getFunctions, httpsCallable } from 'firebase/functions';
 import type { Filters, LatLng } from '../core/types';
 import { buildPlacesQuery, type SearchPlacesInput } from '../features/filters/buildPlacesQuery';
 import { app } from './firebase';
+import { createAsyncCache } from './asyncCache';
 
 // The Places API key never reaches the client: all Places access goes through these callables.
 
@@ -61,18 +62,30 @@ export async function geocode(address: string): Promise<GeoResult | null> {
   return res.data?.result ?? null;
 }
 
-export async function placePhotoUrls(placeId: string): Promise<string[]> {
+// Session caches: a place's photos/reviews are fetched once and reused everywhere
+// (swipe card -> podium -> spotlight), so the results screen shows images it already
+// pulled while swiping instead of re-fetching and flashing a placeholder. In memory
+// only — never persisted (Google Places ToS).
+const photoCache = createAsyncCache<string[]>(async (placeId) => {
   const res = await httpsCallable<{ placeId: string }, { urls?: string[] } | null>(
     functions(),
     'placePhotos',
   )({ placeId });
   return res.data?.urls ?? [];
-}
+});
 
-export async function placeReviews(placeId: string): Promise<Review[]> {
+const reviewCache = createAsyncCache<Review[]>(async (placeId) => {
   const res = await httpsCallable<{ placeId: string }, { reviews?: Review[] } | null>(
     functions(),
     'placeReviews',
   )({ placeId });
   return res.data?.reviews ?? [];
+});
+
+export function placePhotoUrls(placeId: string): Promise<string[]> {
+  return photoCache(placeId);
+}
+
+export function placeReviews(placeId: string): Promise<Review[]> {
+  return reviewCache(placeId);
 }
