@@ -19,13 +19,17 @@ const config: ExpoConfig = {
     'expo-localization',
     ['expo-camera', { cameraPermission: 'Swipe Eats uses the camera to scan a join QR code.', recordAudioAndroid: false }],
     ['expo-location', { locationWhenInUsePermission: 'Swipe Eats uses your location to find places near you.' }],
-    // Shrink the release build: R8 code minification + unused-resource stripping.
+    // NOTE: R8/ProGuard minification is intentionally OFF. Enabling it stripped the
+    // Room-generated classes that WorkManager instantiates by reflection
+    // (androidx.work.impl.WorkDatabase), crashing the app at startup. Size is already
+    // handled by Hermes + per-device delivery from the Play .aab; re-enabling R8 would
+    // require full keep rules for Room/WorkManager/Firebase/Reanimated and careful testing.
     [
       'expo-build-properties',
       {
         android: {
-          enableProguardInReleaseBuilds: true,
-          enableShrinkResourcesInReleaseBuilds: true,
+          enableProguardInReleaseBuilds: false,
+          enableShrinkResourcesInReleaseBuilds: false,
         },
       },
     ],

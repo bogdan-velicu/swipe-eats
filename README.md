@@ -155,9 +155,11 @@ npm run test:emu   # Firestore security rules against the Firebase emulator
 
 ## Building for release (EAS)
 
-Builds use [EAS Build](https://docs.expo.dev/build/introduction/). The release build is
-optimized for size: **Hermes**, **R8** code minification and **resource shrinking** are
-enabled (see `expo-build-properties` in `app.config.ts`).
+Builds use [EAS Build](https://docs.expo.dev/build/introduction/). Size is handled by the
+**Hermes** engine plus Google Play's per-device delivery from the `.aab` (each user
+downloads only their device's slice). R8/ProGuard minification is deliberately **off** —
+it broke WorkManager's reflection-based startup at release; re-enabling it needs full keep
+rules (see the note in `app.config.ts`).
 
 ```bash
 npm i -g eas-cli
