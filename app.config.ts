@@ -6,6 +6,7 @@ const LINK_HOST = 'swipeeats.example.com';
 const config: ExpoConfig = {
   name: 'Swipe Eats',
   slug: 'swipe-eats',
+  owner: 'zotrix',
   version: '1.0.0',
   orientation: 'portrait',
   icon: './assets/icon.png',
@@ -29,6 +30,7 @@ const config: ExpoConfig = {
       },
     ],
   ],
+  extra: { eas: { projectId: 'fba48804-be68-4f8e-9a73-deb46d48d81e' } },
   ios: { supportsTablet: false, bundleIdentifier: 'app.swipeeats.dinner', associatedDomains: [`applinks:${LINK_HOST}`] },
   android: {
     package: 'app.swipeeats.dinner',
