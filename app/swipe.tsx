@@ -32,7 +32,7 @@ function Deck({ session }: { session: Session }) {
   }
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: t.color.bg }}>
-      <SwipeDeck deck={deck} />
+      <SwipeDeck deck={deck} anchor={session.filters?.anchor} />
     </SafeAreaView>
   );
 }

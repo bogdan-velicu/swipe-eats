@@ -11,7 +11,7 @@ import Animated, {
   type SharedValue,
 } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
-import type { Candidate, SwipeDir } from '../../core/types';
+import type { Candidate, LatLng, SwipeDir } from '../../core/types';
 import { useTheme } from '../../theme';
 import { SwipeCard } from './SwipeCard';
 import type { Deck } from './useDeck';
@@ -26,6 +26,7 @@ interface CardHandle {
 
 interface DeckCardProps {
   candidate: Candidate;
+  anchor?: LatLng;
   isTop: boolean;
   /** Top card's horizontal drag, shared so the card behind scales up as it is revealed. */
   dragX: SharedValue<number>;
@@ -37,7 +38,7 @@ interface DeckCardProps {
  * One gesture-driven card. All drag/spring work runs on the UI thread (worklets);
  * the JS thread is only touched once, when the fling spring finishes, to advance the deck.
  */
-function DeckCard({ candidate, isTop, dragX, onCommit, handle }: DeckCardProps) {
+function DeckCard({ candidate, anchor, isTop, dragX, onCommit, handle }: DeckCardProps) {
   const t = useTheme();
   const { width } = useWindowDimensions();
   const threshold = width * 0.3;
@@ -111,7 +112,7 @@ function DeckCard({ candidate, isTop, dragX, onCommit, handle }: DeckCardProps) 
   return (
     <GestureDetector gesture={pan}>
       <Animated.View style={[StyleSheet.absoluteFill, cardStyle]} pointerEvents={isTop ? 'auto' : 'none'}>
-        <SwipeCard candidate={candidate} />
+        <SwipeCard candidate={candidate} anchor={anchor} />
         <Animated.View style={[styles.stamp, styles.stampLike, { borderColor: t.color.like }, likeStyle]} pointerEvents="none">
           <Text style={[styles.stampText, { color: t.color.like }]}>LIKE</Text>
         </Animated.View>
@@ -124,7 +125,7 @@ function DeckCard({ candidate, isTop, dragX, onCommit, handle }: DeckCardProps) 
 }
 
 /** Thin presentational layer: all deck logic comes from useDeck. */
-export function SwipeDeck({ deck }: { deck: Deck }) {
+export function SwipeDeck({ deck, anchor }: { deck: Deck; anchor?: LatLng }) {
   const t = useTheme();
   const dragX = useSharedValue(0);
   const topCard = useRef<CardHandle>(null);
@@ -139,8 +140,8 @@ export function SwipeDeck({ deck }: { deck: Deck }) {
   return (
     <View style={styles.root}>
       <View style={[styles.stack, { margin: t.space.xl }]}>
-        {next && <DeckCard key={next.id} candidate={next} isTop={false} dragX={dragX} onCommit={commit} />}
-        {current && <DeckCard key={current.id} candidate={current} isTop dragX={dragX} onCommit={commit} handle={topCard} />}
+        {next && <DeckCard key={next.id} candidate={next} anchor={anchor} isTop={false} dragX={dragX} onCommit={commit} />}
+        {current && <DeckCard key={current.id} candidate={current} anchor={anchor} isTop dragX={dragX} onCommit={commit} handle={topCard} />}
       </View>
       <View style={styles.buttons}>
         <RoundButton label="✕" color={t.color.pass} accessibilityLabel="Pass" onPress={() => topCard.current?.fling('PASS')} />
