@@ -13,10 +13,10 @@ const mkSession = (ids: string[]): Session => ({ id: 's1', candidates: ids.map(c
 
 type Deck = ReturnType<typeof useDeck>;
 
-function setup(session: Session) {
+function setup(session: Session, swiped?: string[]) {
   const out: { cur?: Deck } = {};
   function Probe() {
-    out.cur = useDeck(session);
+    out.cur = useDeck(session, swiped);
     return null;
   }
   const root = createRoot();
@@ -77,5 +77,22 @@ describe('useDeck', () => {
     await act(async () => root.render(createElement(Probe)));
     await act(async () => out.cur!.like());
     expect(out.cur?.current?.id).toBe('b');
+  });
+
+  it('rehydrates: skips already-swiped candidates and does not re-record them', async () => {
+    const { out, root, Probe } = setup(mkSession(['a', 'b', 'c']), ['a', 'b']);
+    await act(async () => root.render(createElement(Probe)));
+    expect(out.cur?.current?.id).toBe('c');
+    expect(out.cur?.remaining).toBe(1);
+    await act(async () => out.cur!.like());
+    expect(rec).toHaveBeenCalledTimes(1);
+    expect(rec).toHaveBeenCalledWith('s1', 'c', 'LIKE');
+    expect(out.cur?.empty).toBe(true);
+  });
+
+  it('is empty when everything was already swiped', async () => {
+    const { out, root, Probe } = setup(mkSession(['a']), ['a']);
+    await act(async () => root.render(createElement(Probe)));
+    expect(out.cur?.empty).toBe(true);
   });
 });

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { recordSwipe } from '../../backend/sessionService';
 import type { Candidate, Session, SwipeDir } from '../../core/types';
 
@@ -16,8 +16,14 @@ export interface Deck {
  * swipe. The index lives in a ref too so rapid double-fires (fling + button tap)
  * can never record the same card twice.
  */
-export function useDeck(session: Pick<Session, 'id' | 'candidates'>): Deck {
-  const candidates = session.candidates ?? [];
+export function useDeck(session: Pick<Session, 'id' | 'candidates'>, alreadySwiped: readonly string[] = []): Deck {
+  // Rehydration: ids swiped before this deck mounted are skipped. Captured once per
+  // session id so live swipe snapshots from our own writes never shift the index.
+  const skipRef = useRef<{ sid: string; ids: Set<string> }>({ sid: session.id, ids: new Set(alreadySwiped) });
+  if (skipRef.current.sid !== session.id) skipRef.current = { sid: session.id, ids: new Set(alreadySwiped) };
+  const skip = skipRef.current.ids;
+  const all = session.candidates ?? [];
+  const candidates = useMemo(() => all.filter((c) => !skip.has(c.id)), [all, skip]);
   const [index, setIndex] = useState(0);
   const indexRef = useRef(0);
   const candRef = useRef(candidates);
