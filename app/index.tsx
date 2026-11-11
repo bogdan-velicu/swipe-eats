@@ -19,7 +19,7 @@ export default function Home() {
       <Link href="/create" asChild>
         <Pressable
           accessibilityRole="button"
-          style={[styles.btn, { backgroundColor: t.color.accent, borderRadius: t.radius.pill }]}
+          style={StyleSheet.flatten([styles.btn, { backgroundColor: t.color.accent, borderRadius: t.radius.pill }])}
         >
           <Text style={[styles.btnText, { color: t.color.bg }]}>Start a session</Text>
         </Pressable>
@@ -27,7 +27,7 @@ export default function Home() {
       <Link href="/join" asChild>
         <Pressable
           accessibilityRole="button"
-          style={[styles.btn, { backgroundColor: t.color.surface, borderRadius: t.radius.pill, marginTop: t.space.md }]}
+          style={StyleSheet.flatten([styles.btn, { backgroundColor: t.color.surface, borderRadius: t.radius.pill, marginTop: t.space.md }])}
         >
           <Text style={[styles.btnText, { color: t.color.text }]}>Join</Text>
         </Pressable>
