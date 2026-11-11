@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, Text } from 'react-native';
 import { useRouter } from 'expo-router';
 import { ensureAnonymousAuth } from '../src/backend/auth';
@@ -8,6 +8,7 @@ import { randomBadge, type Badge } from '../src/features/join/badges';
 import { currentLocation, geocodeAddress } from '../src/features/session/location';
 import { DEFAULT_DRAFT, FilterSheet, type FilterDraft } from '../src/features/filters/FilterSheet';
 import { foodTypeCandidates } from '../src/features/filters/placesRound';
+import { RangeMap } from '../src/features/map/RangeMap';
 import { useSettings } from '../src/state/settings';
 import { useTheme } from '../src/theme';
 import { BadgePicker, Button, ErrorText, Field, Label, Segmented } from '../src/ui/Form';
@@ -33,10 +34,31 @@ export default function CreateScreen() {
   const [address, setAddress] = useState('');
   const [draft, setDraft] = useState<FilterDraft>(DEFAULT_DRAFT);
   const [showFilters, setShowFilters] = useState(false);
+  const [showMap, setShowMap] = useState(false);
+  const [previewAnchor, setPreviewAnchor] = useState<LatLng | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const canSubmit = !busy && name.trim().length > 0 && (source === 'gps' || address.trim().length > 0);
+
+  // Resolve the anchor for the range preview only while the map is open.
+  useEffect(() => {
+    if (!showMap) return;
+    let alive = true;
+    const timer = setTimeout(
+      () => {
+        const p = source === 'gps' ? currentLocation() : geocodeAddress(address);
+        void p.then((r) => {
+          if (alive) setPreviewAnchor(r.ok ? r.anchor : null);
+        });
+      },
+      source === 'gps' ? 0 : 600,
+    );
+    return () => {
+      alive = false;
+      clearTimeout(timer);
+    };
+  }, [showMap, source, address]);
 
   async function submit() {
     setBusy(true);
@@ -98,6 +120,17 @@ export default function CreateScreen() {
         <Label>{showFilters ? 'Filters (tap to hide)' : 'Filters (tap to edit)'}</Label>
       </Pressable>
       {showFilters ? <FilterSheet value={draft} onChange={setDraft} /> : null}
+
+      <Pressable accessibilityRole="button" onPress={() => setShowMap((v) => !v)}>
+        <Label>{showMap ? 'Reachable range (tap to hide)' : 'Reachable range (tap to preview map)'}</Label>
+      </Pressable>
+      {showMap ? (
+        previewAnchor ? (
+          <RangeMap filters={{ ...draft, anchor: previewAnchor }} />
+        ) : (
+          <Text style={{ color: t.color.textDim }}>Set a location to preview your range.</Text>
+        )
+      ) : null}
 
       <ErrorText>{error}</ErrorText>
       <Button title={busy ? 'Starting...' : 'Start session'} onPress={() => void submit()} disabled={!canSubmit} />
