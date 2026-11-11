@@ -43,5 +43,6 @@ export default function SwipeScreen() {
   if (loading || !session) {
     return <Message text={error ? "Couldn't load this session." : loading ? 'Loading...' : 'Session not found.'} />;
   }
-  return <Deck session={session} />;
+  // key by mode: the food-type -> places handoff swaps the candidate list, so reset the deck.
+  return <Deck key={session.mode} session={session} />;
 }

@@ -245,6 +245,12 @@ export async function setCandidates(id: string, candidates: Candidate[]): Promis
   await updateDoc(sessionRef(id), { candidates: clean(candidates) });
 }
 
+/** Host only (rules). Starts the (food-type) round: waiting -> active. */
+export async function startSession(id: string): Promise<void> {
+  await ensureAnonymousAuth();
+  await updateDoc(sessionRef(id), { status: 'active' });
+}
+
 /** Host only (rules). Switches the session to the places round and activates it. */
 export async function startPlacesRound(id: string): Promise<void> {
   await ensureAnonymousAuth();

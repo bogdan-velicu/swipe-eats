@@ -1,6 +1,6 @@
 import { getFunctions, httpsCallable } from 'firebase/functions';
-import { FOOD_TYPES } from '../core/foodTypes';
 import type { Filters, LatLng } from '../core/types';
+import { buildPlacesQuery, type SearchPlacesInput } from '../features/filters/buildPlacesQuery';
 import { app } from './firebase';
 
 // The Places API key never reaches the client: all Places access goes through these callables.
@@ -24,40 +24,17 @@ export interface Review {
   attributions: { authorName?: string; authorUri?: string; authorPhotoUri?: string };
 }
 
-const DEFAULT_RADIUS_M = 1500;
-const WALK_METERS_PER_MIN = 80;
 const MAX_PAGES = 3;
 
 const functions = () => getFunctions(app);
 
-function radiusFor(f: Filters): number {
-  if (f.radiusMeters) return f.radiusMeters;
-  if (f.maxWalkMin) return f.maxWalkMin * WALK_METERS_PER_MIN;
-  return DEFAULT_RADIUS_M;
-}
-
-function typesFor(cuisines: string[]): string[] {
-  const out: string[] = [];
-  for (const c of cuisines) {
-    const t = FOOD_TYPES.find((x) => x.value === c)?.placesType;
-    if (t && !out.includes(t)) out.push(t);
-  }
-  return out;
-}
-
-export async function searchPlaces(filters: Filters): Promise<PlaceLite[]> {
+/** Accepts raw Filters (converted via buildPlacesQuery) or an already-built query. */
+export async function searchPlaces(input: Filters | SearchPlacesInput): Promise<PlaceLite[]> {
+  const request: SearchPlacesInput = 'includedTypes' in input ? input : buildPlacesQuery(input);
   const call = httpsCallable<unknown, { places?: PlaceLite[]; nextPageToken?: string } | null>(
     functions(),
     'searchPlaces',
   );
-  const request = {
-    anchor: filters.anchor,
-    radiusMeters: radiusFor(filters),
-    includedTypes: typesFor(filters.cuisines),
-    maxPrice: filters.maxPrice,
-    minRating: filters.minRating,
-    openNow: filters.openNow,
-  };
   const byId = new Map<string, PlaceLite>();
   let pageToken: string | undefined;
   for (let page = 0; page < MAX_PAGES; page++) {

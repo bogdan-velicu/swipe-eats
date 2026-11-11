@@ -1,11 +1,13 @@
 import { useState } from 'react';
-import { ScrollView, Text } from 'react-native';
+import { Pressable, ScrollView, Text } from 'react-native';
 import { useRouter } from 'expo-router';
 import { ensureAnonymousAuth } from '../src/backend/auth';
 import { createSession } from '../src/backend/sessionService';
 import type { LatLng, Session } from '../src/core/types';
 import { randomBadge, type Badge } from '../src/features/join/badges';
 import { currentLocation, geocodeAddress } from '../src/features/session/location';
+import { DEFAULT_DRAFT, FilterSheet, type FilterDraft } from '../src/features/filters/FilterSheet';
+import { foodTypeCandidates } from '../src/features/filters/placesRound';
 import { useSettings } from '../src/state/settings';
 import { useTheme } from '../src/theme';
 import { BadgePicker, Button, ErrorText, Field, Label, Segmented } from '../src/ui/Form';
@@ -29,6 +31,8 @@ export default function CreateScreen() {
   const [mode, setMode] = useState<Session['mode']>('both');
   const [source, setSource] = useState<'gps' | 'address'>('gps');
   const [address, setAddress] = useState('');
+  const [draft, setDraft] = useState<FilterDraft>(DEFAULT_DRAFT);
+  const [showFilters, setShowFilters] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -45,11 +49,13 @@ export default function CreateScreen() {
       }
       const anchor: LatLng = loc.anchor;
       await ensureAnonymousAuth();
-      // Filters are a placeholder here; the full FilterSheet (Task 14) edits them in the lobby.
+      // Filters are immutable after create (rules), so they are chosen here. Food-type rounds are seeded
+      // now; the place list is fetched by the host when they start / hand off (see lobby).
       const session = await createSession({
         host: { name: name.trim(), emoji: badge.emoji, color: badge.color },
         mode,
-        filters: { unit, cuisines: [], openNow: false, radiusMeters: 1500, anchor },
+        filters: { ...draft, unit, anchor },
+        candidates: mode === 'place' ? [] : foodTypeCandidates(),
       });
       router.replace({ pathname: '/lobby', params: { id: session.id } });
     } catch {
@@ -87,6 +93,11 @@ export default function CreateScreen() {
       ) : (
         <Text style={{ color: t.color.textDim, marginTop: t.space.sm }}>We will use your current location.</Text>
       )}
+
+      <Pressable accessibilityRole="button" onPress={() => setShowFilters((v) => !v)}>
+        <Label>{showFilters ? 'Filters (tap to hide)' : 'Filters (tap to edit)'}</Label>
+      </Pressable>
+      {showFilters ? <FilterSheet value={draft} onChange={setDraft} /> : null}
 
       <ErrorText>{error}</ErrorText>
       <Button title={busy ? 'Starting...' : 'Start session'} onPress={() => void submit()} disabled={!canSubmit} />

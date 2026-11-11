@@ -51,3 +51,8 @@ export function defaultUnitSystem(locale: string): UnitSystem {
   const region = locale.split(/[-_]/)[1]?.toUpperCase();
   return region && IMPERIAL_REGIONS.has(region) ? 'imperial' : 'metric';
 }
+
+/** Inverse of walkingMinutes: meters covered in `minutes` at 5 km/h. */
+export function walkingMeters(minutes: number): number {
+  return Math.round(Math.max(0, minutes) * WALK_METERS_PER_MIN);
+}
