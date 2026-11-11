@@ -18,6 +18,16 @@ const config: ExpoConfig = {
     'expo-localization',
     ['expo-camera', { cameraPermission: 'Swipe Eats uses the camera to scan a join QR code.', recordAudioAndroid: false }],
     ['expo-location', { locationWhenInUsePermission: 'Swipe Eats uses your location to find places near you.' }],
+    // Shrink the release build: R8 code minification + unused-resource stripping.
+    [
+      'expo-build-properties',
+      {
+        android: {
+          enableProguardInReleaseBuilds: true,
+          enableShrinkResourcesInReleaseBuilds: true,
+        },
+      },
+    ],
   ],
   ios: { supportsTablet: false, bundleIdentifier: 'app.swipeeats.dinner', associatedDomains: [`applinks:${LINK_HOST}`] },
   android: {
